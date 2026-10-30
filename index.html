@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Quiz & Jeopardy Master</title>
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #38bdf8;
+      --accent-gold: #f59e0b;
+      --text: #f8fafc;
+      --danger: #ef4444;
+      --success: #22c55e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text); padding: 20px; }
+
+    /* Layout */
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+    h1 { font-size: 1.8rem; color: var(--accent); }
+    .nav-tabs { display: flex; gap: 10px; }
+    .nav-btn { background: var(--card-bg); border: 1px solid #475569; color: var(--text); padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .nav-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+
+    .main-container { display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+
+    /* Jeopardy Board */
+    .board-grid { display: grid; gap: 10px; text-align: center; }
+    .category-header { background: #1e1b4b; color: var(--accent-gold); padding: 15px 5px; font-weight: bold; border-radius: 6px; text-transform: uppercase; border: 1px solid #4338ca; }
+    .question-card { background: var(--card-bg); color: var(--accent-gold); font-size: 1.5rem; font-weight: bold; padding: 25px 5px; border-radius: 6px; cursor: pointer; border: 1px solid #334155; transition: transform 0.1s; }
+    .question-card:hover { transform: scale(1.03); background: #334155; }
+    .question-card.used { background: #0f172a; color: #475569; border-color: #1e293b; cursor: default; transform: none; }
+
+    /* Slide Deck View */
+    .slide-view { background: var(--card-bg); border-radius: 8px; padding: 40px; text-align: center; min-height: 400px; display: flex; flex-direction: column; justify-content: space-between; }
+    .slide-question { font-size: 1.8rem; margin-bottom: 20px; line-height: 1.4; }
+    .slide-answer { font-size: 1.4rem; color: var(--success); margin: 20px 0; min-height: 40px; }
+    .slide-controls { display: flex; justify-content: center; gap: 15px; }
+
+    /* Sidebar / Team & Buzzer Management */
+    .sidebar { display: flex; flex-direction: column; gap: 20px; }
+    .panel { background: var(--card-bg); padding: 15px; border-radius: 8px; border: 1px solid #334155; }
+    .panel h2 { font-size: 1.2rem; margin-bottom: 12px; color: var(--accent); border-bottom: 1px solid #334155; padding-bottom: 5px; }
+
+    /* Buzzer System */
+    .buzzer-btn { width: 100%; padding: 20px; font-size: 1.5rem; font-weight: bold; background: var(--danger); color: white; border: none; border-radius: 8px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 0 #991b1b; }
+    .buzzer-btn:active { transform: translateY(4px); box-shadow: none; }
+    .buzzer-queue { list-style: none; margin-top: 10px; }
+    .buzzer-item { background: #0f172a; padding: 8px 12px; border-radius: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid var(--accent); }
+    .buzzer-rank { font-weight: bold; color: var(--accent-gold); }
+
+    /* Teams & Leaderboard */
+    .team-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .team-card { background: #0f172a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .team-score { font-weight: bold; font-size: 1.1rem; color: var(--accent-gold); }
+    .score-btn { background: #334155; color: white; border: none; width: 25px; height: 25px; border-radius: 4px; cursor: pointer; margin-left: 4px; }
+
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); justify-content: center; align-items: center; padding: 20px; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--card-bg); width: 100%; max-width: 600px; padding: 30px; border-radius: 10px; text-align: center; position: relative; border: 1px solid var(--accent); }
+    .btn { background: var(--accent); color: #000; border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    
+    input[type="text"] { width: 100%; padding: 8px; background: #0f172a; border: 1px solid #475569; color: white; border-radius: 4px; margin-bottom: 10px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Quiz Master</h1>
+    <div class="nav-tabs">
+      <button class="nav-btn active" onclick="switchTab('jeopardy')">Jeopardy Board</button>
+      <button class="nav-btn" onclick="switchTab('slides')">Slide Questions</button>
+      <button class="nav-btn" onclick="switchTab('settings')">Settings / Sync Sheet</button>
+    </div>
+  </header>
+
+  <div class="main-container">
+    <!-- Main Content Area -->
+    <main>
+      <!-- Jeopardy View -->
+      <section id="jeopardy-view">
+        <div id="board" class="board-grid"></div>
+      </section>
+
+      <!-- Slide Questions View -->
+      <section id="slides-view" class="hidden">
+        <div class="slide-view">
+          <div id="slide-number" style="color: var(--accent); font-weight: bold;">Slide 1</div>
+          <div id="slide-question" class="slide-question">Load your Google Sheet to display slide questions.</div>
+          <div id="slide-answer" class="slide-answer hidden"></div>
+          <div class="slide-controls">
+            <button class="btn" onclick="prevSlide()">Previous</button>
+            <button class="btn btn-success" onclick="toggleSlideAnswer()">Reveal Answer</button>
+            <button class="btn" onclick="nextSlide()">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings View -->
+      <section id="settings-view" class="hidden">
+        <div class="panel">
+          <h2>Google Sheets CSV Integration</h2>
+          <p style="margin-bottom: 10px; font-size: 0.9rem; color: #94a3b8;">Publish your Google Sheet as CSV and paste the URL below:</p>
+          <input type="text" id="sheet-url" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv">
+          <button class="btn" onclick="loadSheetData()">Sync Data from Sheet</button>
+        </div>
+      </section>
+    </main>
+
+    <!-- Sidebar: Buzzer & Teams -->
+    <aside class="sidebar">
+      <!-- Buzzer Panel -->
+      <div class="panel">
+        <h2>Live Buzzer</h2>
+        <select id="buzzer-team-select" style="width:100%; padding: 8px; margin-bottom: 10px; background:#0f172a; color:white; border-radius:4px;">
+          <option value="">-- Select Playing Team --</option>
+        </select>
+        <button class="buzzer-btn" onclick="pressBuzzer()">BUZZ!</button>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+          <h3 style="font-size: 0.9rem;">Press Order Queue:</h3>
+          <button class="btn btn-danger" style="padding: 4px 8px; font-size: 0.8rem;" onclick="resetBuzzer()">Reset Queue</button>
+        </div>
+        
+        <ul id="buzzer-queue" class="buzzer-queue">
+          <!-- Buzzer order items appear dynamically here -->
+        </ul>
+      </div>
+
+      <!-- Teams Panel -->
+      <div class="panel">
+        <h2>Teams & Leaderboard</h2>
+        <div style="display:flex; gap:5px;">
+          <input type="text" id="team-name-input" placeholder="Team Name" style="margin-bottom:0;">
+          <button class="btn" onclick="addTeam()">Add</button>
+        </div>
+        <div id="team-list" class="team-list"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Question Modal -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <h3 id="modal-category" style="color: var(--accent-gold); margin-bottom: 10px;">Category</h3>
+      <p id="modal-question" style="font-size: 1.4rem; margin-bottom: 20px;"></p>
+      <p id="modal-answer" class="slide-answer hidden"></p>
+      <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-success" onclick="toggleModalAnswer()">Reveal Answer</button>
+        <button class="btn" onclick="closeModal()">Close / Complete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // --- State Management ---
+    let state = {
+      teams: [],
+      buzzerQueue: [],
+      currentSlide: 0,
+      jeopardyData: [
+        { category: "Science", points: 100, question: "What planet is known as the Red Planet?", answer: "Mars" },
+        { category: "Science", points: 200, question: "What is the hardest natural substance on Earth?", answer: "Diamond" },
+        { category: "Tech", points: 100, question: "What does CPU stand for?", answer: "Central Processing Unit" },
+        { category: "Tech", points: 200, question: "Who co-founded Microsoft alongside Bill Gates?", answer: "Paul Allen" }
+      ],
+      slidesData: [
+        { question: "General Question 1: What is the largest ocean on Earth?", answer: "Pacific Ocean" },
+        { question: "General Question 2: Which element has the chemical symbol 'O'?", answer: "Oxygen" }
+      ]
+    };
+
+    // --- BroadcastChannel for Real-Time Synchronization across tabs/devices ---
+    const syncChannel = new BroadcastChannel('quiz_sync_channel');
+
+    syncChannel.onmessage = (event) => {
+      if (event.data.type === 'BUZZER_PRESS') {
+        recordBuzzerPress(event.data.teamName);
+      } else if (event.data.type === 'BUZZER_RESET') {
+        state.buzzerQueue = [];
+        renderBuzzerQueue();
+      }
+    };
+
+    // --- Tab Navigation ---
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('jeopardy-view').classList.add('hidden');
+      document.getElementById('slides-view').classList.add('hidden');
+      document.getElementById('settings-view').classList.add('hidden');
+
+      if (tab === 'jeopardy') {
+        document.getElementById('jeopardy-view').classList.remove('hidden');
+        event.target.classList.add('active');
+      } else if (tab === 'slides') {
+        document.getElementById('slides-view').classList.remove('hidden');
+        event.target.classList.add('active');
+        renderSlide();
+      } else if (tab === 'settings') {
+        document.getElementById('settings-view').classList.remove('hidden');
+        event.target.classList.add('active');
+      }
+    }
+
+    // --- Team & Score Management ---
+    function addTeam() {
+      const input = document.getElementById('team-name-input');
+      const name = input.value.trim();
+      if (name && !state.teams.some(t => t.name === name)) {
+        state.teams.push({ name, score: 0 });
+        input.value = '';
+        renderTeams();
+      }
+    }
+
+    function updateScore(index, delta) {
+      state.teams[index].score += delta;
+      renderTeams();
+    }
+
+    function renderTeams() {
+      // Sort teams by score descending
+      state.teams.sort((a, b) => b.score - a.score);
+      const container = document.getElementById('team-list');
+      const select = document.getElementById('buzzer-team-select');
+      container.innerHTML = '';
+      select.innerHTML = '<option value="">-- Select Playing Team --</option>';
+
+      state.teams.forEach((team, index) => {
+        container.innerHTML += `
+          <div class="team-card">
+            <span>${team.name}</span>
+            <div class="team-score">
+              ${team.score}
+              <button class="score-btn" onclick="updateScore(${index}, 100)">+</button>
+              <button class="score-btn" onclick="updateScore(${index}, -100)">-</button>
+            </div>
+          </div>
+        `;
+        select.innerHTML += `<option value="${team.name}">${team.name}</option>`; }); }  // --- Buzzer System (Sequential Order Tracking) --- function pressBuzzer() { const teamSelect = document.getElementById('buzzer-team-select'); const teamName = teamSelect.value; if (!teamName) { alert("Please select a team before buzzing!"); return; } recordBuzzerPress(teamName); syncChannel.postMessage({ type: 'BUZZER_PRESS', teamName }); }  function recordBuzzerPress(teamName) { // Prevent duplicate presses in the same round if (!state.buzzerQueue.includes(teamName)) { state.buzzerQueue.push(teamName); renderBuzzerQueue(); } }  function resetBuzzer() { state.buzzerQueue = []; renderBuzzerQueue(); syncChannel.postMessage({ type: 'BUZZER_RESET' }); }  function renderBuzzerQueue() { const queueList = document.getElementById('buzzer-queue'); queueList.innerHTML = ''; state.buzzerQueue.forEach((team, idx) => { const ordinals = ["1st", "2nd", "3rd", "4th", "5th", "6th"]; const rankText = ordinals[idx] \vert{}\vert{} `${idx + 1}th`;
+        queueList.innerHTML += `
+          <li class="buzzer-item">
+            <span>${team}</span>
+            <span class="buzzer-rank">${rankText} Press</span>
+          </li>
+        `;
+      });
+    }
+
+    // --- Jeopardy Board Rendering ---
+    function renderBoard() {
+      const board = document.getElementById('board');
+      board.innerHTML = '';
+
+      const categories = [...new Set(state.jeopardyData.map(item => item.category))];
+      board.style.gridTemplateColumns = `repeat(${categories.length}, 1fr)`;
+
+      // Headers
+      categories.forEach(cat => {
+        board.innerHTML += `<div class="category-header">${cat}</div>`;
+      });
+
+      // Questions by Point Values
+      const pointValues = [100, 200, 300, 400, 500];
+      pointValues.forEach(points => {
+        categories.forEach(cat => {
+          const item = state.jeopardyData.find(q => q.category === cat && q.points == points);
+          if (item) {
+            board.innerHTML += `
+              <div class="question-card" id="card-${cat}-${points}" onclick="openModal('${cat}', ${points})"> $${points}
+              </div>
+            `;
+          } else {
+            board.innerHTML += `<div class="question-card used">-</div>`;
+          }
+        });
+      });
+    }
+
+    // --- Modal Controls ---
+    let currentActiveCard = null;
+    function openModal(cat, points) {
+      const item = state.jeopardyData.find(q => q.category === cat && q.points == points);
+      if (!item) return;
+
+      currentActiveCard = `card-${cat}-${points}`;
+      document.getElementById('modal-category').innerText = `${cat} -$${points}`;
+      document.getElementById('modal-question').innerText = item.question;
+      document.getElementById('modal-answer').innerText = item.answer;
+      document.getElementById('modal-answer').classList.add('hidden');
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function toggleModalAnswer() {
+      document.getElementById('modal-answer').classList.toggle('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+      if (currentActiveCard) {
+        const card = document.getElementById(currentActiveCard);
+        if (card) card.classList.add('used');
+      }
+    }
+
+    // --- Slide Presentation View ---
+    function renderSlide() {
+      if (state.slidesData.length === 0) return;
+      const slide = state.slidesData[state.currentSlide];
+      document.getElementById('slide-number').innerText = `Slide ${state.currentSlide + 1} of${state.slidesData.length}`;
+      document.getElementById('slide-question').innerText = slide.question;
+      document.getElementById('slide-answer').innerText = slide.answer;
+      document.getElementById('slide-answer').classList.add('hidden');
+    }
+
+    function toggleSlideAnswer() {
+      document.getElementById('slide-answer').classList.toggle('hidden');
+    }
+
+    function nextSlide() {
+      if (state.currentSlide < state.slidesData.length - 1) {
+        state.currentSlide++;
+        renderSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (state.currentSlide > 0) {
+        state.currentSlide--;
+        renderSlide();
+      }
+    }
+
+    // --- CSV / Google Sheets Parser ---
+    async function loadSheetData() {
+      const url = document.getElementById('sheet-url').value.trim();
+      if (!url) return alert('Please enter a published CSV URL');
+
+      try {
+        const response = await fetch(url);
+        const text = await response.text();
+        parseCSV(text);
+        alert('Data synced successfully!');
+      } catch (err) {
+        alert('Failed to fetch CSV data. Ensure the URL is published as CSV.');
+      }
+    }
+
+    function parseCSV(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      
+      const parsedJeopardy = [];
+      const parsedSlides = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const row = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        if (headers.includes('category')) {
+          parsedJeopardy.push({
+            category: row[headers.indexOf('category')],
+            points: parseInt(row[headers.indexOf('points')]),
+            question: row[headers.indexOf('question')],
+            answer: row[headers.indexOf('answer')]
+          });
+        } else if (headers.includes('slidenumber') || headers.includes('question')) {
+          parsedSlides.push({
+            question: row[headers.indexOf('question')],
+            answer: row[headers.indexOf('answer')]
+          });
+        }
+      }
+
+      if (parsedJeopardy.length > 0) state.jeopardyData = parsedJeopardy;
+      if (parsedSlides.length > 0) state.slidesData = parsedSlides;
+
+      renderBoard();
+      renderSlide();
+    }
+
+    // --- Initial Init ---
+    renderBoard();
+  </script>
+</body>
+</html>
