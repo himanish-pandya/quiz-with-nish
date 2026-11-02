@@ -379,7 +379,71 @@
         renderSlide();
       }
     }
+    // --- Improved CSV Parser ---
 
+    function parseCSVRows(text) {
+      const rows = [];
+      let currentRow = [];
+      let currentCell = '';
+      let insideQuotes = false;
+
+      // Go through the CSV one character at a time
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const nextChar = text[i + 1];
+
+        // Handle quotation marks
+        if (char === '"') {
+          // Two quotation marks inside a quoted cell mean one literal quotation mark
+          if (insideQuotes && nextChar === '"') {
+            currentCell += '"';
+            i++;
+          } else {
+            // Enter or leave quoted text
+            insideQuotes = !insideQuotes;
+          }
+        }
+
+        // A comma separates cells, but only when we are NOT inside quotation marks
+        else if (char === ',' && !insideQuotes) {
+          currentRow.push(currentCell.trim());
+          currentCell = '';
+        }
+
+        // Handle Windows-style line endings: \r\n
+        else if (char === '\r' && nextChar === '\n' && !insideQuotes) {
+          currentRow.push(currentCell.trim());
+          rows.push(currentRow);
+
+          currentRow = [];
+          currentCell = '';
+          i++;
+        }
+
+        // Handle Unix-style line endings: \n
+        else if (char === '\n' && !insideQuotes) {
+          currentRow.push(currentCell.trim());
+          rows.push(currentRow);
+
+          currentRow = [];
+          currentCell = '';
+        }
+
+        // Normal character: add it to the current cell
+        else {
+          currentCell += char;
+        }
+      }
+
+      // Add the final cell and row
+      if (currentCell.length > 0 || currentRow.length > 0) {
+        currentRow.push(currentCell.trim());
+        rows.push(currentRow);
+      }
+
+      return rows;
+    }
+    
     // --- Google Sheets CSV Integration ---
 
     async function loadSheetData() {
