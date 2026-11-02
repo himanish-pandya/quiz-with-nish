@@ -633,8 +633,38 @@
       return parsedSlides;
     }
 
-    // --- Initial Init ---
-    renderBoard();
+    // --- Initial Setup ---
+
+    async function initializeQuiz() {
+      // Get the previously saved Google Sheet URLs
+      const savedJeopardyUrl = localStorage.getItem('jeopardySheetUrl');
+      const savedSlidesUrl = localStorage.getItem('slidesSheetUrl');
+
+      // Put the saved URLs back into the input boxes
+      if (savedJeopardyUrl) {
+        document.getElementById('jeopardy-sheet-url').value =
+          savedJeopardyUrl;
+      }
+
+      if (savedSlidesUrl) {
+        document.getElementById('slides-sheet-url').value =
+          savedSlidesUrl;
+      }
+
+      // If we have previously connected Google Sheets,
+      // automatically load the latest quiz data
+      if (savedJeopardyUrl || savedSlidesUrl) {
+        await loadSheetData(false);
+      } else {
+        // First visit: show the example data
+        renderBoard();
+        renderSlide();
+      }
+    }
+
+    // Start the quiz application
+    initializeQuiz();
+
   </script>
 </body>
 </html>
