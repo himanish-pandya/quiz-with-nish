@@ -356,7 +356,7 @@
     function renderSlide() {
       if (state.slidesData.length === 0) return;
       const slide = state.slidesData[state.currentSlide];
-      document.getElementById('slide-number').innerText = `Slide ${state.currentSlide + 1} of${state.slidesData.length}`;
+      document.getElementById('slide-number').innerText = `Slide ${state.currentSlide + 1} of ${state.slidesData.length}`;
       document.getElementById('slide-question').innerText = slide.question;
       document.getElementById('slide-answer').innerText = slide.answer;
       document.getElementById('slide-answer').classList.add('hidden');
