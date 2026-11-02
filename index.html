@@ -443,7 +443,7 @@
 
       return rows;
     }
-    
+
     // --- Google Sheets CSV Integration ---
 
     async function loadSheetData() {
@@ -494,18 +494,20 @@
       }
     }
 
-
+    
     // --- Parse Jeopardy CSV ---
 
     function parseJeopardyCSV(text) {
-      const lines = text
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line);
+      const rows = parseCSVRows(text);
 
-      const headers = lines[0]
-        .split(',')
-        .map(header => header.trim().toLowerCase());
+      if (rows.length < 2) {
+        throw new Error('The Jeopardy sheet does not contain any question data.');
+      }
+
+      // Read and standardize the column headers
+      const headers = rows[0].map(header =>
+        header.trim().toLowerCase()
+      );
 
       // Check that all required columns exist
       const requiredColumns = [
@@ -521,24 +523,34 @@
 
       if (!hasRequiredColumns) {
         throw new Error(
-          'Jeopardy sheet must contain: category, points, question, answer'
+          'Jeopardy sheet must contain these columns: category, points, question, answer'
         );
       }
 
       const parsedJeopardy = [];
 
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i]
-          .split(',')
-          .map(cell =>
-            cell.trim().replace(/^"|"$/g, '')
-          );
+      // Start at 1 because row 0 contains the headers
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+
+        // Skip completely empty rows
+        if (row.every(cell => cell.trim() === '')) {
+          continue;
+        }
+
+        const points = parseInt(
+          row[headers.indexOf('points')]
+        );
+
+        // Make sure the points value is a valid number
+        if (isNaN(points)) {
+          console.warn(`Skipping row ${i + 1}: invalid points value.`);
+          continue;
+        }
 
         parsedJeopardy.push({
           category: row[headers.indexOf('category')],
-          points: parseInt(
-            row[headers.indexOf('points')]
-          ),
+          points: points,
           question: row[headers.indexOf('question')],
           answer: row[headers.indexOf('answer')]
         });
@@ -546,7 +558,6 @@
 
       return parsedJeopardy;
     }
-
 
     // --- Parse Slides CSV ---
 
