@@ -251,7 +251,42 @@
             </div>
           </div>
         `;
-        select.innerHTML += `<option value="${team.name}">${team.name}</option>`; }); }  // --- Buzzer System (Sequential Order Tracking) --- function pressBuzzer() { const teamSelect = document.getElementById('buzzer-team-select'); const teamName = teamSelect.value; if (!teamName) { alert("Please select a team before buzzing!"); return; } recordBuzzerPress(teamName); syncChannel.postMessage({ type: 'BUZZER_PRESS', teamName }); }  function recordBuzzerPress(teamName) { // Prevent duplicate presses in the same round if (!state.buzzerQueue.includes(teamName)) { state.buzzerQueue.push(teamName); renderBuzzerQueue(); } }  function resetBuzzer() { state.buzzerQueue = []; renderBuzzerQueue(); syncChannel.postMessage({ type: 'BUZZER_RESET' }); }  function renderBuzzerQueue() { const queueList = document.getElementById('buzzer-queue'); queueList.innerHTML = ''; state.buzzerQueue.forEach((team, idx) => { const ordinals = ["1st", "2nd", "3rd", "4th", "5th", "6th"]; const rankText = ordinals[idx] \vert{}\vert{} `${idx + 1}th`;
+        select.innerHTML += `<option value="${team.name}">${team.name}</option>`;
+      });
+    }
+
+    // --- Buzzer System (Sequential Order Tracking) ---
+    function pressBuzzer() {
+      const teamSelect = document.getElementById('buzzer-team-select');
+      const teamName = teamSelect.value;
+      if (!teamName) {
+        alert("Please select a team before buzzing!");
+        return;
+      }
+      recordBuzzerPress(teamName);
+      syncChannel.postMessage({ type: 'BUZZER_PRESS', teamName });
+    }
+
+    function recordBuzzerPress(teamName) {
+      // Prevent duplicate presses in the same round
+      if (!state.buzzerQueue.includes(teamName)) {
+        state.buzzerQueue.push(teamName);
+        renderBuzzerQueue();
+      }
+    }
+
+    function resetBuzzer() {
+      state.buzzerQueue = [];
+      renderBuzzerQueue();
+      syncChannel.postMessage({ type: 'BUZZER_RESET' });
+    }
+
+    function renderBuzzerQueue() {
+      const queueList = document.getElementById('buzzer-queue');
+      queueList.innerHTML = '';
+      state.buzzerQueue.forEach((team, idx) => {
+        const ordinals = ["1st", "2nd", "3rd", "4th", "5th", "6th"];
+        const rankText = ordinals[idx] || `${idx + 1}th`;
         queueList.innerHTML += `
           <li class="buzzer-item">
             <span>${team}</span>
