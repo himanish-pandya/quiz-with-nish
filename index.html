@@ -562,14 +562,16 @@
     // --- Parse Slides CSV ---
 
     function parseSlidesCSV(text) {
-      const lines = text
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line);
+      const rows = parseCSVRows(text);
 
-      const headers = lines[0]
-        .split(',')
-        .map(header => header.trim().toLowerCase());
+      if (rows.length < 2) {
+        throw new Error('The Slides sheet does not contain any question data.');
+      }
+
+      // Read and standardize the column headers
+      const headers = rows[0].map(header =>
+        header.trim().toLowerCase()
+      );
 
       // Check that the required columns exist
       const requiredColumns = [
@@ -583,18 +585,20 @@
 
       if (!hasRequiredColumns) {
         throw new Error(
-          'Slides sheet must contain: question, answer'
+          'Slides sheet must contain these columns: question, answer'
         );
       }
 
       const parsedSlides = [];
 
-      for (let i = 1; i < lines.length; i++) {
-        const row = lines[i]
-          .split(',')
-          .map(cell =>
-            cell.trim().replace(/^"|"$/g, '')
-          );
+      // Start at 1 because row 0 contains the headers
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+
+        // Skip completely empty rows
+        if (row.every(cell => cell.trim() === '')) {
+          continue;
+        }
 
         parsedSlides.push({
           question: row[headers.indexOf('question')],
