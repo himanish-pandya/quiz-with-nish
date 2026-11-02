@@ -446,7 +446,7 @@
 
     // --- Google Sheets CSV Integration ---
 
-    async function loadSheetData() {
+    async function loadSheetData(showMessage = true) {
       const jeopardyUrl = document
         .getElementById('jeopardy-sheet-url')
         .value
@@ -459,23 +459,43 @@
 
       // Make sure at least one URL was entered
       if (!jeopardyUrl && !slidesUrl) {
-        alert('Please enter at least one published CSV URL.');
+        if (showMessage) {
+          alert('Please enter at least one published CSV URL.');
+        }
         return;
       }
 
+      // Save the URLs so they survive a page refresh
+      localStorage.setItem('jeopardySheetUrl', jeopardyUrl);
+      localStorage.setItem('slidesSheetUrl', slidesUrl);
+
       try {
-        // Load Jeopardy data if a URL was provided
+        // Load Jeopardy data
         if (jeopardyUrl) {
-          const response = await fetch(jeopardyUrl);
+          const response = await fetch(jeopardyUrl, {
+            cache: 'no-store'
+          });
+
+          if (!response.ok) {
+            throw new Error('Could not load the Jeopardy sheet.');
+          }
+
           const text = await response.text();
 
           state.jeopardyData = parseJeopardyCSV(text);
           renderBoard();
         }
 
-        // Load Slide data if a URL was provided
+        // Load Slide data
         if (slidesUrl) {
-          const response = await fetch(slidesUrl);
+          const response = await fetch(slidesUrl, {
+            cache: 'no-store'
+          });
+
+          if (!response.ok) {
+            throw new Error('Could not load the Slides sheet.');
+          }
+
           const text = await response.text();
 
           state.slidesData = parseSlidesCSV(text);
@@ -483,14 +503,18 @@
           renderSlide();
         }
 
-        alert('Quiz data synced successfully!');
+        if (showMessage) {
+          alert('Quiz data synced successfully!');
+        }
 
       } catch (err) {
         console.error(err);
 
-        alert(
-          'Failed to fetch quiz data. Please make sure both Google Sheet tabs are published as CSV.'
-        );
+        if (showMessage) {
+          alert(
+            'Failed to fetch quiz data. Please check your published Google Sheet URLs.'
+          );
+        }
       }
     }
 
