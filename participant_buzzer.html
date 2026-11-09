@@ -109,16 +109,51 @@
     // LOAD TEAMS
     // ==========================================
 
-    async function loadTeams() {
-      /*
-       * For the first version, we'll load team names
-       * from the participant's browser manually.
-       *
-       * We'll improve this in the next step by storing
-       * teams in Supabase so every participant sees them.
-       */
+     async function loadTeams() {
+      const teamSelect = document.getElementById('team-select');
+
+      const { data, error } = await supabaseClient
+        .from('quiz_teams')
+        .select('name')
+        .eq('session_id', QUIZ_SESSION_ID)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Could not load teams:', error);
+        return;
+      }
+
+      // Clear the current options
+      teamSelect.innerHTML = '<option value="">-- Select Your Team --</option>';
+
+      // Add each team from Supabase
+      data.forEach((team) => {
+        const option = document.createElement('option');
+        option.value = team.name;
+        option.textContent = team.name;
+        teamSelect.appendChild(option);
+      });
     }
 
+    function subscribeToTeams() {
+      supabaseClient
+        .channel(`teams-${QUIZ_SESSION_ID}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'quiz_teams',
+            filter: `session_id=eq.${QUIZ_SESSION_ID}`
+          },
+          () => {
+            // Reload the team list whenever a team is added,
+            // updated, or deleted
+            loadTeams();
+          }
+        )
+        .subscribe();
+    }
 
     // ==========================================
     // LOAD BUZZER STATUS
@@ -233,8 +268,12 @@
       .getElementById('buzz-button')
       .addEventListener('click', sendBuzz);
 
+    loadTeams();
+    subscribeToTeams();
+    
     loadBuzzerStatus();
     subscribeToBuzzerStatus();
+    
   </script>
 
 </body>
