@@ -125,6 +125,21 @@
             Sync Quiz Data
           </button>
         </div>
+        <div class="panel">
+          <h2>Quiz Categories</h2>
+
+          <p style="margin-top: 0;">
+            Select the categories you want to include on the current quiz board.
+          </p>
+
+          <div id="category-selection">
+            <p>Sync your Jeopardy questions to see available categories.</p>
+          </div>
+
+          <button class="btn" onclick="applyCategorySelection()">
+            Build Quiz Board
+          </button>
+        </div>
       </section>
     </main>
 
@@ -226,6 +241,7 @@
       teams: [],
       buzzerQueue: [],
       currentSlide: 0,
+      selectedCategories: [],
       jeopardyData: [
         { category: "Science", points: 100, question: "What planet is known as the Red Planet?", answer: "Mars" },
         { category: "Science", points: 200, question: "What is the hardest natural substance on Earth?", answer: "Diamond" },
@@ -567,31 +583,117 @@
       });
     }
 
+    // --- Quiz Category Selection ---
+
+    function renderCategorySelection() {
+      const container = document.getElementById('category-selection');
+
+      // Find all unique categories and arrange them alphabetically
+      const categories = [
+        ...new Set(state.jeopardyData.map(item => item.category))
+      ].sort((a, b) => a.localeCompare(b));
+
+      if (categories.length === 0) {
+        container.innerHTML =
+          '<p style="color: #94a3b8;">No categories are available.</p>';
+        return;
+      }
+
+      // When categories are first loaded, select all of them
+      if (state.selectedCategories.length === 0) {
+        state.selectedCategories = [...categories];
+      }
+
+      container.innerHTML = categories.map(category => `
+        <label style=" display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+          <input
+            type="checkbox"
+            value="${category}"
+            ${state.selectedCategories.includes(category) ? 'checked' : ''}
+          >
+          ${category}
+        </label>
+      `).join('');
+    }
+
+    function applyCategorySelection() {
+      const checkboxes = document.querySelectorAll(
+        '#category-selection input[type="checkbox"]'
+      );
+
+      const selected = Array.from(checkboxes)
+        .filter(checkbox => checkbox.checked)
+        .map(checkbox => checkbox.value);
+
+      if (selected.length === 0) {
+        alert('Please select at least one category.');
+        return;
+      }
+
+      state.selectedCategories = selected;
+
+      // Rebuild the board using only the selected categories
+      renderBoard();
+
+      alert('Quiz board updated!');
+    }
+
     // --- Jeopardy Board Rendering ---
+
     function renderBoard() {
       const board = document.getElementById('board');
       board.innerHTML = '';
 
-      const categories = [...new Set(state.jeopardyData.map(item => item.category))];
-      board.style.gridTemplateColumns = `repeat(${categories.length}, 1fr)`;
+      // Only use questions from the selected categories
+      const activeQuestions = state.jeopardyData.filter(question =>
+        state.selectedCategories.includes(question.category)
+      );
+
+      const categories = [
+        ...new Set(activeQuestions.map(item => item.category))
+      ];
+
+      // If there are no selected categories, show a helpful message
+      if (categories.length === 0) {
+        board.innerHTML = `
+          <p style="color: #94a3b8;">
+            No categories selected. Go to Settings to build your quiz board.
+          </p>
+        `;
+        return;
+      }
+
+      board.style.gridTemplateColumns =
+        `repeat(${categories.length}, 1fr)`;
 
       // Headers
       categories.forEach(cat => {
-        board.innerHTML += `<div class="category-header">${cat}</div>`;
+        board.innerHTML +=
+          `<div class="category-header">${cat}</div>`;
       });
 
       // Questions by Point Values
       const pointValues = [100, 200, 300, 400, 500];
+
       pointValues.forEach(points => {
         categories.forEach(cat => {
-          const item = state.jeopardyData.find(q => q.category === cat && q.points == points);
+          const item = activeQuestions.find(
+            q => q.category === cat && q.points == points
+          );
+
           if (item) {
             board.innerHTML += `
-              <div class="question-card" id="card-${cat}-${points}" onclick="openModal('${cat}', ${points})"> $${points}
+              <div
+                class="question-card"
+                id="card-${cat}-${points}"
+                onclick="openModal('${cat}', ${points})"
+              >
+                $${points}
               </div>
             `;
           } else {
-            board.innerHTML += `<div class="question-card used">-</div>`;
+            board.innerHTML +=
+              `<div class="question-card used">-</div>`;
           }
         });
       });
@@ -600,7 +702,7 @@
     // --- Modal Controls ---
     let currentActiveCard = null;
     function openModal(cat, points) {
-      const item = state.jeopardyData.find(q => q.category === cat && q.points == points);
+      const item = state.jeopardyData.find(q => state.selectedCategories.includes(q.category) && q.category === cat && q.points == points);
       if (!item) return;
 
       currentActiveCard = `card-${cat}-${points}`;
@@ -754,6 +856,11 @@
           const text = await response.text();
 
           state.jeopardyData = parseJeopardyCSV(text);
+
+          // Reset the selection to include all newly loaded categories
+          state.selectedCategories = [];
+
+          renderCategorySelection();
           renderBoard();
         }
 
@@ -942,6 +1049,7 @@
         await loadSheetData(false);
       } else {
         // First visit: show the example data
+        renderCategorySelection();
         renderBoard();
         renderSlide();
       }
