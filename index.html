@@ -55,6 +55,12 @@
     /* Teams & Leaderboard */
     .team-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
     .team-card { background: #0f172a; padding: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+    .team-card { display: flex; justify-content: space-between; align-items: center; gap: 15px;}
+    .team-card > span { flex: 1; min-width: 0; overflow-wrap: anywhere;}
+    .team-score { display: flex; flex-direction: column; align-items: flex-end; gap: 8px;}
+    .score-top-row, .score-bottom-row {display: flex; align-items: center; gap: 8px; white-space: nowrap;}
+    .total-score { font-size: 1.4rem; font-weight: bold;}
+    .score-bottom-row input { width: 120px;}
     .team-score { font-weight: bold; font-size: 1.1rem; color: var(--accent-gold); }
     .score-btn { background: #334155; color: white; border: none; width: 25px; height: 25px; border-radius: 4px; cursor: pointer; margin-left: 4px; }
 
@@ -382,30 +388,34 @@
         container.innerHTML += `
           <div class="team-card">
             <span>${team.name}</span>
+
             <div class="team-score">
-              <span>${team.score}</span>
+              <div class="score-top-row">
+                <span class="total-score">${team.score}</span>
 
-              <button class="score-btn" onclick="updateScore(${index}, 100)">
-                +100
-              </button>
+                <button class="score-btn" onclick="updateScore(${index}, 100)">
+                  +100
+                </button>
 
-              <button class="score-btn" onclick="updateScore(${index}, -100)">
-                -100
-              </button>
+                <button class="score-btn" onclick="updateScore(${index}, -100)">
+                  -100
+                </button>
+              </div>
 
-              <input
-                type="number"
-                id="custom-score-${index}"
-                placeholder="Points"
-                style="width: 70px;"
-              >
+              <div class="score-bottom-row">
+                <input
+                  type="number"
+                  id="custom-score-${index}"
+                  placeholder="Points"
+                >
 
-              <button
-                class="score-btn"
-                onclick="addCustomScore(${index})"
-              >
-                Add
-              </button>
+                <button
+                  class="score-btn"
+                  onclick="addCustomScore(${index})"
+                >
+                  Add
+                </button>
+              </div>
             </div>
           </div>
         `;
