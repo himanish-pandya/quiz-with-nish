@@ -265,48 +265,93 @@
     }
 
     // --- Team & Score Management ---
-    function addTeam() {
+    async function addTeam() {
       const input = document.getElementById('team-name-input');
       const name = input.value.trim();
-      if (name && !state.teams.some(t => t.name === name)) {
-        state.teams.push({ name, score: 0 });
-        input.value = '';
-        renderTeams();
-      }
-    }
 
-    function saveTeams() {
-      localStorage.setItem(
-        `quizTeams_${QUIZ_SESSION_ID}`,
-        JSON.stringify(state.teams)
-      );
-    }
+      if (!name) return;
 
-    function loadTeams() {
-      const savedTeams = localStorage.getItem(
-        `quizTeams_${QUIZ_SESSION_ID}`
-      );
-
-      if (savedTeams) {
-        state.teams = JSON.parse(savedTeams);
+      // Check whether this team already exists
+      if (state.teams.some(team => 
+        team.name.toLowerCase() === name.toLowerCase()
+      )) {
+        alert('A team with this name already exists.');
+        return;
       }
 
+      const { data, error } = await supabaseClient
+        .from('quiz_teams')
+        .insert({
+          session_id: QUIZ_SESSION_ID,
+          name: name,
+          score: 0
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Could not add team:', error);
+        alert('There was a problem adding the team.');
+        return;
+      }
+
+      state.teams.push(data);
+      input.value = '';
       renderTeams();
     }
 
-    function updateScore(index, delta) {
-      state.teams[index].score += delta;
-      saveTeams();
+    async function loadTeams() {
+      const { data, error } = await supabaseClient
+        .from('quiz_teams')
+        .select('*')
+        .eq('session_id', QUIZ_SESSION_ID)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Could not load teams:', error);
+        return;
+      }
+
+      state.teams = data;
       renderTeams();
     }
 
-    function resetTeams() {
+   async function updateScore(index, delta) {
+      const team = state.teams[index];
+      const newScore = team.score + delta;
+
+      const { error } = await supabaseClient
+        .from('quiz_teams')
+        .update({ score: newScore })
+        .eq('id', team.id);
+
+      if (error) {
+        console.error('Could not update score:', error);
+        alert('There was a problem updating the score.');
+        return;
+      }
+
+      team.score = newScore;
+      renderTeams();
+    }
+
+    async function resetTeams() {
       if (!confirm("Are you sure you want to remove all teams and reset their scores?")) {
         return;
       }
 
+      const { error } = await supabaseClient
+        .from('quiz_teams')
+        .delete()
+        .eq('session_id', QUIZ_SESSION_ID);
+
+      if (error) {
+        console.error('Could not reset teams:', error);
+        alert('There was a problem resetting the teams.');
+        return;
+      }
+
       state.teams = [];
-      localStorage.removeItem(`quizTeams_${QUIZ_SESSION_ID}`);
       renderTeams();
     }
 
