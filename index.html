@@ -342,10 +342,20 @@
       }
     }
 
-    function resetBuzzer() {
+    async function resetBuzzer() {
+      const { error } = await supabaseClient
+        .from('buzzer_presses')
+        .delete()
+        .eq('session_id', QUIZ_SESSION_ID);
+
+      if (error) {
+        console.error('Could not reset buzzer:', error);
+        alert('There was a problem resetting the buzzer.');
+        return;
+      }
+
       state.buzzerQueue = [];
       renderBuzzerQueue();
-      syncChannel.postMessage({ type: 'BUZZER_RESET' });
     }
 
     function renderBuzzerQueue() {
