@@ -763,6 +763,7 @@
     }
 
     async function initializeQuiz() {
+      loadTeams();
       // Get the previously saved Google Sheet URLs
       const savedJeopardyUrl = localStorage.getItem('jeopardySheetUrl');
       const savedSlidesUrl = localStorage.getItem('slidesSheetUrl');
