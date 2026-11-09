@@ -599,13 +599,19 @@
         return;
       }
 
-      // When categories are first loaded, select all of them
+      // If no selection has been loaded yet, select all categories
       if (state.selectedCategories.length === 0) {
         state.selectedCategories = [...categories];
       }
 
       container.innerHTML = categories.map(category => `
-        <label style=" display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer;">
+        <label style="
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 8px;
+          cursor: pointer;
+        ">
           <input
             type="checkbox"
             value="${category}"
@@ -631,6 +637,8 @@
       }
 
       state.selectedCategories = selected;
+    
+      localStorage.setItem('selectedQuizCategories', JSON.stringify(state.selectedCategories));
 
       // Rebuild the board using only the selected categories
       renderBoard();
@@ -857,9 +865,6 @@
 
           state.jeopardyData = parseJeopardyCSV(text);
 
-          // Reset the selection to include all newly loaded categories
-          state.selectedCategories = [];
-
           renderCategorySelection();
           renderBoard();
         }
@@ -1028,6 +1033,23 @@
 
     async function initializeQuiz() {
       loadTeams();
+      
+      // Restore previously selected quiz categories
+      const savedCategories = localStorage.getItem(
+        'selectedQuizCategories'
+      );
+
+      if (savedCategories) {
+        try {
+          state.selectedCategories = JSON.parse(savedCategories);
+        } catch (error) {
+          console.warn(
+            'Could not restore saved category selection:',
+            error
+          );
+        }
+      }
+
       // Get the previously saved Google Sheet URLs
       const savedJeopardyUrl = localStorage.getItem('jeopardySheetUrl');
       const savedSlidesUrl = localStorage.getItem('slidesSheetUrl');
