@@ -149,6 +149,13 @@
           <input type="text" id="team-name-input" placeholder="Team Name" style="margin-bottom:0;">
           <button class="btn" onclick="addTeam()">Add</button>
         </div>
+        <button
+          class="btn btn-danger"
+          style="margin-top: 10px; width: 100%;"
+          onclick="resetTeams()"
+        >
+          Reset Teams
+        </button>
         <div id="team-list" class="team-list"></div>
       </div>
     </aside>
@@ -244,8 +251,38 @@
       }
     }
 
+    function saveTeams() {
+      localStorage.setItem(
+        `quizTeams_${QUIZ_SESSION_ID}`,
+        JSON.stringify(state.teams)
+      );
+    }
+
+    function loadTeams() {
+      const savedTeams = localStorage.getItem(
+        `quizTeams_${QUIZ_SESSION_ID}`
+      );
+
+      if (savedTeams) {
+        state.teams = JSON.parse(savedTeams);
+      }
+
+      renderTeams();
+    }
+
     function updateScore(index, delta) {
       state.teams[index].score += delta;
+      saveTeams();
+      renderTeams();
+    }
+
+    function resetTeams() {
+      if (!confirm("Are you sure you want to remove all teams and reset their scores?")) {
+        return;
+      }
+
+      state.teams = [];
+      localStorage.removeItem(`quizTeams_${QUIZ_SESSION_ID}`);
       renderTeams();
     }
 
