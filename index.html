@@ -107,7 +107,8 @@
             style="max-width: 100%; max-height: 300px; margin: 0 auto 20px; border-radius: 6px;">
           <div class="slide-controls">
             <button class="btn" onclick="prevSlide()">Previous</button>
-            <button class="btn btn-success" onclick="toggleSlideAnswer()">Reveal Answer</button>
+            <button id="slide-answer-btn" class="btn btn-success" onclick="toggleSlideAnswer()">
+              Reveal Answer</button>
             <button class="btn" onclick="nextSlide()">Next</button>
           </div>
         </div>
@@ -221,7 +222,8 @@
       <img id="modal-answer-image" class="hidden" alt="Question image" 
         style="max-width: 100%; max-height: 300px; margin: 0 auto 20px; border-radius: 6px;">
       <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
-        <button class="btn btn-success" onclick="toggleModalAnswer()">Reveal Answer</button>
+        <button id="modal-answer-btn" class="btn btn-success" onclick="toggleModalAnswer()">
+          Reveal Answer</button>
         <button class="btn" onclick="closeModal()">Close / Complete</button>
       </div>
     </div>
@@ -748,7 +750,7 @@
         questionImage.src = item.questionImage;
         questionImage.classList.remove('hidden');
       } else {
-        questionImage.src = '';
+        questionImage.removeAttribute('src');
         questionImage.classList.add('hidden');
       }
 
@@ -760,12 +762,13 @@
       if (item.answerImage) {
         answerImage.src = item.answerImage;
       } else {
-        answerImage.src = '';
+        answerImage.removeAttribute('src');
       }
 
       answerImage.classList.add('hidden');
 
       document.getElementById('modal-answer').classList.add('hidden');
+      document.getElementById('modal-answer-btn').textContent ='Reveal Answer';
       document.getElementById('modal').classList.add('active');
     }
 
@@ -774,18 +777,30 @@
       const answerImage = document.getElementById(
         'modal-answer-image'
       );
+      const button = document.getElementById('modal-answer-btn');
 
       const isCurrentlyHidden =
         answerText.classList.contains('hidden');
 
-      answerText.classList.toggle('hidden');
+      if (isCurrentlyHidden) {
+        // Reveal answer
+        answerText.classList.remove('hidden');
 
-      // Only show an answer image when one exists
-      if (answerImage.src) {
-        answerImage.classList.toggle(
-          'hidden',
-          !isCurrentlyHidden
-        );
+        if (
+          answerImage.getAttribute('src') &&
+          answerImage.getAttribute('src').trim()
+        ) {
+          answerImage.classList.remove('hidden');
+        }
+
+        button.textContent = 'Hide Answer';
+
+      } else {
+        // Hide answer
+        answerText.classList.add('hidden');
+        answerImage.classList.add('hidden');
+
+        button.textContent = 'Reveal Answer';
       }
     }
 
@@ -817,11 +832,11 @@
         'slide-question-image'
       );
 
-      if (slide.questionImage) {
-        questionImage.src = slide.questionImage;
+      if (slide.questionImage && slide.questionImage.trim()) {
+        questionImage.src = slide.questionImage.trim();
         questionImage.classList.remove('hidden');
       } else {
-        questionImage.src = '';
+        questionImage.removeAttribute('src');
         questionImage.classList.add('hidden');
       }
 
@@ -830,15 +845,19 @@
         'slide-answer-image'
       );
 
-      if (slide.answerImage) {
-        answerImage.src = slide.answerImage;
+      if (slide.answerImage && slide.answerImage.trim()) {
+        answerImage.src = slide.answerImage.trim();
       } else {
-        answerImage.src = '';
+        answerImage.removeAttribute('src');
       }
 
-      // Hide the answer and its image when changing slides
+      // Start every new slide with the answer hidden
       document.getElementById('slide-answer').classList.add('hidden');
       answerImage.classList.add('hidden');
+
+      // Reset the Reveal Answer button
+      document.getElementById('slide-answer-btn').textContent =
+        'Reveal Answer';
     }
 
     function toggleSlideAnswer() {
@@ -846,18 +865,30 @@
       const answerImage = document.getElementById(
         'slide-answer-image'
       );
+      const button = document.getElementById('slide-answer-btn');
 
       const isCurrentlyHidden =
         answerText.classList.contains('hidden');
 
-      answerText.classList.toggle('hidden');
+      if (isCurrentlyHidden) {
+        // Reveal the answer
+        answerText.classList.remove('hidden');
 
-      // Show the answer image only if one exists
-      if (answerImage.src) {
-        answerImage.classList.toggle(
-          'hidden',
-          !isCurrentlyHidden
-        );
+        if (
+          state.slidesData[state.currentSlide].answerImage &&
+          state.slidesData[state.currentSlide].answerImage.trim()
+        ) {
+          answerImage.classList.remove('hidden');
+        }
+
+        button.textContent = 'Hide Answer';
+
+      } else {
+        // Hide the answer
+        answerText.classList.add('hidden');
+        answerImage.classList.add('hidden');
+
+        button.textContent = 'Reveal Answer';
       }
     }
 
