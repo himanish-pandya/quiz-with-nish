@@ -109,28 +109,38 @@
     // LOAD TEAMS
     // ==========================================
 
-     async function loadTeams() {
+    async function loadTeams() {
       const teamSelect = document.getElementById('team-select');
+
+      // Remember the previously selected team on this device
+      const savedTeam = localStorage.getItem(
+        `selectedTeam_${QUIZ_SESSION_ID}`
+      );
 
       const { data, error } = await supabaseClient
         .from('quiz_teams')
         .select('name')
         .eq('session_id', QUIZ_SESSION_ID)
-        .order('created_at', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) {
         console.error('Could not load teams:', error);
         return;
       }
 
-      // Clear the current options
-      teamSelect.innerHTML = '<option value="">-- Select Your Team --</option>';
+      teamSelect.innerHTML =
+        '<option value="">-- Select Your Team --</option>';
 
-      // Add each team from Supabase
       data.forEach((team) => {
         const option = document.createElement('option');
         option.value = team.name;
         option.textContent = team.name;
+
+        // Restore the previously selected team
+        if (team.name === savedTeam) {
+          option.selected = true;
+        }
+
         teamSelect.appendChild(option);
       });
     }
@@ -268,9 +278,19 @@
       .getElementById('buzz-button')
       .addEventListener('click', sendBuzz);
 
+    // Remember the participant's selected team
+    document
+      .getElementById('team-select')
+      .addEventListener('change', (event) => {
+        localStorage.setItem(
+          `selectedTeam_${QUIZ_SESSION_ID}`,
+          event.target.value
+        );
+      });
+
     loadTeams();
     subscribeToTeams();
-    
+
     loadBuzzerStatus();
     subscribeToBuzzerStatus();
     
