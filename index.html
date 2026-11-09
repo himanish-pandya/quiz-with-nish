@@ -650,6 +650,19 @@
 
     // --- Initial Setup ---
 
+    // --- Test Supabase Connection ---
+    async function testSupabaseConnection() {
+      const { data, error } = await supabaseClient
+        .from('connection_test')
+        .select('*');
+
+      if (error) {
+        console.error('Supabase connection failed:', error);
+      } else {
+        console.log('Supabase connected successfully!', data);
+      }
+    }
+
     async function initializeQuiz() {
       // Get the previously saved Google Sheet URLs
       const savedJeopardyUrl = localStorage.getItem('jeopardySheetUrl');
@@ -679,6 +692,7 @@
 
     // Start the quiz application
     initializeQuiz();
+    testSupabaseConnection();
 
   </script>
 </body>
