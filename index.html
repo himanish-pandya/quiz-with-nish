@@ -167,7 +167,21 @@
     </div>
   </div>
 
+  <!-- Supabase JavaScript Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
   <script>
+    // --- Supabase Connection ---
+
+    const SUPABASE_URL = 'https://aeswhmzxgoneemxgpiar.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_ZoSW_OEaXJeW6FJEb-t9IA_eebtHGaC';
+
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+
     // --- State Management ---
     let state = {
       teams: [],
