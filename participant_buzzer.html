@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz Buzzer</title>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      width: min(90%, 500px);
+      text-align: center;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    #status {
+      font-size: 1.1rem;
+      margin-bottom: 25px;
+    }
+
+    select {
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 25px;
+      font-size: 1rem;
+      border-radius: 8px;
+    }
+
+    .buzzer {
+      width: 250px;
+      height: 250px;
+      border-radius: 50%;
+      border: none;
+      font-size: 2rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .buzzer:disabled {
+      cursor: not-allowed;
+      opacity: 0.4;
+    }
+
+    .message {
+      margin-top: 20px;
+      min-height: 25px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h1>Quiz Buzzer</h1>
+
+    <div id="status">Connecting to quiz...</div>
+
+    <select id="team-select">
+      <option value="">-- Select Your Team --</option>
+    </select>
+
+    <button id="buzz-button" class="buzzer" disabled>
+      BUZZ!
+    </button>
+
+    <div id="message" class="message"></div>
+  </div>
+
+
+  <script>
+    // ==========================================
+    // SUPABASE CONNECTION
+    // ==========================================
+
+    const SUPABASE_URL = 'https://aeswhmzxgoneemxgpiar.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_ZoSW_OEaXJeW6FJEb-t9IA_eebtHGaC';
+
+    const supabaseClient = supabase.createClient(
+      SUPABASE_URL,
+      SUPABASE_KEY
+    );
+
+    // IMPORTANT: Use the SAME session ID as your host page
+    const QUIZ_SESSION_ID = 'e43c8705-62a9-4468-b5f5-ef859995f98d';
+
+
+    // ==========================================
+    // LOAD TEAMS
+    // ==========================================
+
+    async function loadTeams() {
+      /*
+       * For the first version, we'll load team names
+       * from the participant's browser manually.
+       *
+       * We'll improve this in the next step by storing
+       * teams in Supabase so every participant sees them.
+       */
+    }
+
+
+    // ==========================================
+    // LOAD BUZZER STATUS
+    // ==========================================
+
+    async function loadBuzzerStatus() {
+      const { data, error } = await supabaseClient
+        .from('quiz_sessions')
+        .select('buzzer_enabled')
+        .eq('id', QUIZ_SESSION_ID)
+        .single();
+
+      if (error) {
+        console.error('Could not load buzzer status:', error);
+        document.getElementById('status').textContent =
+          'Could not connect to the quiz.';
+        return;
+      }
+
+      updateBuzzerStatus(data.buzzer_enabled);
+    }
+
+
+    // ==========================================
+    // UPDATE BUZZER DISPLAY
+    // ==========================================
+
+    let buzzerEnabled = false;
+
+    function updateBuzzerStatus(enabled) {
+      buzzerEnabled = enabled;
+
+      const button = document.getElementById('buzz-button');
+      const status = document.getElementById('status');
+
+      button.disabled = !enabled;
+
+      if (enabled) {
+        status.textContent = '🟢 BUZZER IS READY!';
+      } else {
+        status.textContent = '🔴 Waiting for the host to turn on the buzzer...';
+      }
+    }
+
+
+    // ==========================================
+    // LISTEN FOR HOST ON/OFF CHANGES
+    // ==========================================
+
+    function subscribeToBuzzerStatus() {
+      supabaseClient
+        .channel(`quiz-session-${QUIZ_SESSION_ID}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'quiz_sessions',
+            filter: `id=eq.${QUIZ_SESSION_ID}`
+          },
+          (payload) => {
+            updateBuzzerStatus(payload.new.buzzer_enabled);
+          }
+        )
+        .subscribe();
+    }
+
+
+    // ==========================================
+    // SEND BUZZER PRESS
+    // ==========================================
+
+    async function sendBuzz() {
+      const teamSelect = document.getElementById('team-select');
+      const teamName = teamSelect.value;
+      const message = document.getElementById('message');
+
+      if (!teamName) {
+        message.textContent = 'Please select your team first.';
+        return;
+      }
+
+      if (!buzzerEnabled) {
+        message.textContent = 'The buzzer is currently off.';
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('buzzer_presses')
+        .insert({
+          session_id: QUIZ_SESSION_ID,
+          participant_name: teamName
+        });
+
+      if (error) {
+        console.error('Could not send buzz:', error);
+        message.textContent = 'There was a problem sending your buzz.';
+        return;
+      }
+
+      // Prevent accidental repeated presses on this device
+      document.getElementById('buzz-button').disabled = true;
+      message.textContent = 'Buzz received!';
+    }
+
+
+    // ==========================================
+    // START THE BUZZER
+    // ==========================================
+
+    document
+      .getElementById('buzz-button')
+      .addEventListener('click', sendBuzz);
+
+    loadBuzzerStatus();
+    subscribeToBuzzerStatus();
+  </script>
+
+</body>
+</html>
