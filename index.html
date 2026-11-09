@@ -272,16 +272,66 @@
       });
     }
 
-    // --- Buzzer System (Sequential Order Tracking) ---
-    function pressBuzzer() {
+    // --- Supabase Buzzer System ---
+
+    async function pressBuzzer() {
       const teamSelect = document.getElementById('buzzer-team-select');
       const teamName = teamSelect.value;
+
       if (!teamName) {
         alert("Please select a team before buzzing!");
         return;
       }
-      recordBuzzerPress(teamName);
-      syncChannel.postMessage({ type: 'BUZZER_PRESS', teamName });
+
+      // Send the buzzer press to Supabase
+      const { error } = await supabaseClient
+        .from('buzzer_presses')
+        .insert({
+          session_id: QUIZ_SESSION_ID,
+          participant_name: teamName
+        });
+
+      if (error) {
+        console.error('Could not record buzzer press:', error);
+        alert('There was a problem sending your buzzer press.');
+      }
+    }
+
+    function subscribeToBuzzer() {
+      supabaseClient
+        .channel(`buzzer-${QUIZ_SESSION_ID}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'buzzer_presses',
+            filter: `session_id=eq.${QUIZ_SESSION_ID}`
+          },
+          (payload) => {
+            const teamName = payload.new.participant_name;
+
+            // Add the team to the queue when a new buzz arrives
+            recordBuzzerPress(teamName);
+          }
+        )
+        .subscribe();
+    }
+
+    async function loadBuzzerQueue() {
+      const { data, error } = await supabaseClient
+        .from('buzzer_presses')
+        .select('*')
+        .eq('session_id', QUIZ_SESSION_ID)
+        .order('pressed_at', { ascending: true });
+
+      if (error) {
+        console.error('Could not load buzzer queue:', error);
+        return;
+      }
+
+      state.buzzerQueue = data.map(press => press.participant_name);
+      renderBuzzerQueue();
     }
 
     function recordBuzzerPress(teamName) {
@@ -695,6 +745,8 @@
     // Start the quiz application
     initializeQuiz();
     testSupabaseConnection();
+    loadBuzzerQueue();
+    subscribeToBuzzer();
 
   </script>
 </body>
