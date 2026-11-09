@@ -296,6 +296,11 @@
       }
 
       state.teams.push(data);
+
+      state.teams.sort((a, b) =>
+        a.name.localeCompare(b.name)
+      );
+      
       input.value = '';
       renderTeams();
     }
@@ -305,7 +310,7 @@
         .from('quiz_teams')
         .select('*')
         .eq('session_id', QUIZ_SESSION_ID)
-        .order('created_at', { ascending: true });
+        .order('name', { ascending: true });
 
       if (error) {
         console.error('Could not load teams:', error);
@@ -356,8 +361,6 @@
     }
 
     function renderTeams() {
-      // Sort teams by score descending
-      state.teams.sort((a, b) => b.score - a.score);
       const container = document.getElementById('team-list');
       const select = document.getElementById('buzzer-team-select');
       container.innerHTML = '';
