@@ -127,6 +127,30 @@
       <!-- Buzzer Panel -->
       <div class="panel">
         <h2>Live Buzzer</h2>
+        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+          <button
+            id="buzzer-on-btn"
+            class="btn btn-success"
+            style="flex: 1;"
+            onclick="setBuzzerEnabled(true)"
+          >
+            Turn Buzzer ON
+          </button>
+
+          <button
+            id="buzzer-off-btn"
+            class="btn btn-danger"
+            style="flex: 1;"
+            onclick="setBuzzerEnabled(false)"
+          >
+            Turn Buzzer OFF
+          </button>
+        </div>
+
+        <div id="buzzer-status" style="text-align: center; margin-bottom: 10px;">
+          Checking buzzer status...
+        </div>
+
         <select id="buzzer-team-select" style="width:100%; padding: 8px; margin-bottom: 10px; background:#0f172a; color:white; border-radius:4px;">
           <option value="">-- Select Playing Team --</option>
         </select>
@@ -307,6 +331,49 @@
         `;
         select.innerHTML += `<option value="${team.name}">${team.name}</option>`;
       });
+    }
+
+    // --- Buzzer ON/OFF Controls ---
+    async function setBuzzerEnabled(enabled) {
+      const { error } = await supabaseClient
+        .from('quiz_sessions')
+        .update({ buzzer_enabled: enabled })
+        .eq('id', QUIZ_SESSION_ID);
+
+      if (error) {
+        console.error('Could not update buzzer status:', error);
+        alert('There was a problem changing the buzzer status.');
+        return;
+      }
+
+      updateBuzzerStatus(enabled);
+    }
+
+    function updateBuzzerStatus(enabled) {
+      const status = document.getElementById('buzzer-status');
+
+      if (enabled) {
+        status.textContent = '🟢 BUZZER IS ON';
+        status.style.color = 'var(--success)';
+      } else {
+        status.textContent = '🔴 BUZZER IS OFF';
+        status.style.color = 'var(--danger)';
+      }
+    }
+
+    async function loadBuzzerStatus() {
+      const { data, error } = await supabaseClient
+        .from('quiz_sessions')
+        .select('buzzer_enabled')
+        .eq('id', QUIZ_SESSION_ID)
+        .single();
+
+      if (error) {
+        console.error('Could not load buzzer status:', error);
+        return;
+      }
+
+      updateBuzzerStatus(data.buzzer_enabled);
     }
 
     // --- Supabase Buzzer System ---
@@ -794,6 +861,7 @@
     initializeQuiz();
     testSupabaseConnection();
     loadBuzzerQueue();
+    loadBuzzerStatus();
     subscribeToBuzzer();
 
   </script>
